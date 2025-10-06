@@ -9,3 +9,5 @@ if nome:
     st.write (nome.upper())
     st.image("programacaoo.jpg"),
 st.write("Eu na aula de hoje programando")
+st.image("programacaoo.jpg")
+st.write("Eu na aula de hoje programando")
