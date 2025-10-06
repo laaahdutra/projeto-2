@@ -6,4 +6,4 @@ st.write("Agora o Colab é passado, venha para o Streamlit")
 
 st.text_input("Digite o seu nome:")
 if nome:
-    st.write(nome.upper())
+    st.write (nome.upper())
