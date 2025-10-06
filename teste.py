@@ -8,6 +8,5 @@ nome = st.text_input("Digite o seu nome:")
 if nome:
     st.write (nome.upper())
     st.image("programacao/imagem_programação.jpg",
-         caption="Eu na aula de hoje",
-         use_container_width=True)
+st.write("Eu na aula de hoje")
     
