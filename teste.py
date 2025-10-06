@@ -7,6 +7,6 @@ st.write("Agora o Colab é passado, venha para o Streamlit")
 nome = st.text_input("Digite o seu nome:")
 if nome:
     st.write (nome.upper())
-    st.image("programacao/imagem_programação.jpg",
+    st.image("programacao/imagem_programação.jpg"),
 st.write("Eu na aula de hoje")
     
