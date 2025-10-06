@@ -4,6 +4,6 @@ st.title("Meu programa")
 st.write("Alô mundo") 
 st.write("Agora o Colab é passado, venha para o Streamlit")
 
-st.text_input("Digite o seu nome:")
+nome = st.text_input("Digite o seu nome:")
 if nome:
     st.write (nome.upper())
