@@ -7,7 +7,6 @@ dataset = pd.read_csv("https://www.irdx.com.br/media/uploads/paises.csv")
 
 st.dataframe(dataset)
 
-import plotly.express as px
 fig = px.scatter_geo(dataset,
                      lat=dataset['latitude'],
                      lon=dataset['longitude'],
