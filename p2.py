@@ -1,5 +1,5 @@
 import pandas as pd
-import plotly.express as px
+import streamlit as px
 
 def baixar_dados(url: str, local_arquivo: str = "infopen.csv") -> None:
     """
