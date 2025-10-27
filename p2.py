@@ -20,12 +20,14 @@ if nome_deputado:
         deputados = data.get("dados", [])
         
         if deputados:
+            # Exibe as informações em formato de tabela
+            st.subheader("Resultados da busca:")
             for deputado in deputados:
-                st.subheader(deputado.get("nome"))
+                st.write(f"**Nome:** {deputado.get('nome')}")
                 st.write(f"**ID:** {deputado.get('id')}")
-                st.write(f"**Sigla Partido:** {deputado.get('siglaPartido')}")
+                st.write(f"**Sigla do Partido:** {deputado.get('siglaPartido')}")
                 st.write(f"**UF:** {deputado.get('siglaUf')}")
-                st.write(f"**URL Perfil:** [Link]({deputado.get('uri')})")
+                st.markdown("---")
         else:
             st.warning("Nenhum deputado encontrado com esse nome.")
             
