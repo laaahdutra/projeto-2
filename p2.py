@@ -10,7 +10,7 @@ def consultar_jurisprudencia(tema):
 
 # Interface do Streamlit
 st.title("Consulta de Jurisprudência")
-tema = st.text_input("Digite o tema da pesquisa", "responsabilidade civil médica")
+tema = st.text_input("Digite o tema da pesquisa")
 
 if st.button("Buscar"):
     if tema:
