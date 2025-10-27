@@ -1,6 +1,7 @@
 # app.py
 import streamlit as st
 import requests
+import pandas as pd
 
 # Título da aplicação
 st.title("Consulta de Deputados - Câmara dos Deputados")
@@ -16,16 +17,24 @@ if nome_deputado:
         response = requests.get(url, timeout=10)
         data = response.json()
         
-        # Verifica se encontrou algum deputado
         deputados = data.get("dados", [])
         
         if deputados:
+            # Criar lista de dicionários com informações
+            lista_info = []
             for deputado in deputados:
-                st.subheader(deputado.get("nome"))
-                st.write(f"**ID:** {deputado.get('id')}")
-                st.write(f"**Sigla Partido:** {deputado.get('siglaPartido')}")
-                st.write(f"**UF:** {deputado.get('siglaUf')}")
-                st.write(f"**URL Perfil:** [Link]({deputado.get('uri')})")
+                lista_info.append({
+                    "Nome": deputado.get("nome"),
+                    "ID": deputado.get("id"),
+                    "Sigla Partido": deputado.get("siglaPartido"),
+                    "UF": deputado.get("siglaUf"),
+                    "URL Perfil": deputado.get("uri")
+                })
+            
+            # Transformar em DataFrame e mostrar
+            df = pd.DataFrame(lista_info)
+            st.table(df)  # ou st.dataframe(df) para tabela interativa
+            
         else:
             st.warning("Nenhum deputado encontrado com esse nome.")
             
