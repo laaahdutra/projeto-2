@@ -1,11 +1,11 @@
-# app.py
+
 import streamlit as st
 import requests
 
-# Título da aplicação
+
 st.title("Consulta de Deputados - Câmara dos Deputados")
 
-# --- Parte 1: Consulta pelo nome do deputado ---
+
 nome_deputado = st.text_input("Digite o nome do deputado:")
 
 if nome_deputado:
@@ -20,7 +20,6 @@ if nome_deputado:
         if deputados:
             st.success(f"{len(deputados)} deputado(s) encontrado(s):")
             
-            # Mostra informações do deputado
             for deputado in deputados:
                 st.subheader(deputado.get("nome"))
                 st.write(f"**ID:** {deputado.get('id')}")
@@ -28,7 +27,6 @@ if nome_deputado:
                 st.write(f"**UF:** {deputado.get('siglaUf')}")
                 st.write(f"**URL Perfil:** [Link]({deputado.get('uri')})")
             
-            # --- Parte 2: Consulta de despesas pelo ID ---
             st.markdown("---")
             st.subheader("Consultar despesas do deputado")
             id_deputado = st.text_input("Digite o ID do deputado para ver suas despesas:")
