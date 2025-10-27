@@ -1,64 +1,87 @@
-import pandas as pd
-import streamlit as px
+# ========================================
+# GERADOR DE PETIÇÃO AUTOMÁTICA - STREAMLIT
+# Base jurídica: arts. 319 e seguintes do CPC
+# Autora: Lara Ivo Barros Dutra
+# ========================================
 
-def baixar_dados(url: str, local_arquivo: str = "infopen.csv") -> None:
-    """
-    Faz o download dos dados da URL para um arquivo CSV local.
-    """
-    df = pd.read_csv(url, low_memory=False)
-    df.to_csv(local_arquivo, index=False)
-    print(f"Arquivo salvo como {local_arquivo}")
+import streamlit as st
+from datetime import date
 
-def preparar_dados(local_arquivo: str = "infopen.csv") -> pd.DataFrame:
-    """
-    Lê o arquivo CSV, filtra para obter os dados agregados por estado (UF)
-    e extrai as colunas relevantes: sigla da UF e população carcerária.
-    """
-    df = pd.read_csv(local_arquivo, low_memory=False)
-    # Exemplos de colunas que podem existir – ajusta conforme o dataset real
-    # Vamos filtrar para “população prisional” por UF
-    # Supomos as colunas: 'UF', 'POPULACAO_PRISIONAL' (nome fictício, verifique no dataset real)
-    col_uf = 'UF'
-    col_pop = 'POPULACAO_PRISIONAL'
-    if col_uf not in df.columns or col_pop not in df.columns:
-        print("ATENÇÃO: colunas esperadas não encontradas. Veja os nomes das colunas no dataset.")
-        print("Colunas disponíveis:", df.columns.tolist())
-        # Para continuar, vamos supor que haja uma coluna chamada 'SIGLA_UF' e 'TOTAL_PRESOS'
-        col_uf = 'SIGLA_UF'
-        col_pop = 'TOTAL_PRESOS'
-    # Fazer agrupamento por UF
-    df2 = df.groupby(col_uf)[col_pop].sum().reset_index()
-    df2 = df2.rename(columns={col_uf: 'sigla', col_pop: 'populacao_carceraria'})
-    # Opcional: remover linhas com sigla inválida ou NaN
-    df2 = df2.dropna(subset=['sigla', 'populacao_carceraria'])
-    return df2
+# Função que gera o texto da petição
+def gerar_peticao(nome_autor, nome_reu, tipo_acao, comarca, pedidos, valor_causa):
+    data_hoje = date.today().strftime("%d/%m/%Y")
 
-def gerar_mapa(df: pd.DataFrame, titulo: str = "População Carcerária por Estado (Brasil)") -> None:
-    """
-    Gera mapa coroplético da população carcerária por estado (sigla).
-    """
-    fig = px.choropleth(
-        df,
-        locations='sigla',
-        locationmode='USA-states' if False else 'ISO-ALPHA-2',  # modifique se necessário; para Brasil pode requerer geojson
-        color='populacao_carceraria',
-        hover_name='sigla',
-        color_continuous_scale='Reds',
-        title=titulo
-    )
-    # Ajustes para exibir o mapa
-    fig.update_geos(fitbounds="locations", visible=False)
-    fig.show()
+    peticao = f"""
+EXCELENTÍSSIMO(A) SENHOR(A) JUIZ(A) DE DIREITO DA {comarca.upper()}
 
-def main():
-    url = "http://dados.mj.gov.br/dataset/f9ebf1f1-8d27-4937-b330-f29b820dca87/resource/54cdab5b-b241-4dcc-83af-43cba0250ef3/download/copia-de-dadosformularios-jan-jun2019.csv"
-    arquivo_local = "infopen.csv"
-    print("Baixando dados …")
-    baixar_dados(url, arquivo_local)
-    print("Preparando dados …")
-    df_estados = preparar_dados(arquivo_local)
-    print("Gerando mapa …")
-    gerar_mapa(df_estados)
+{nome_autor.upper()}, brasileiro(a), portador(a) de CPF nº XXX.XXX.XXX-XX,
+residente e domiciliado(a) nesta cidade, por intermédio de seu advogado (instrumento de mandato anexo),
+vem, respeitosamente, à presença de Vossa Excelência propor a presente
 
-if __name__ == "__main__":
-    main()
+AÇÃO DE {tipo_acao.upper()}
+
+em face de {nome_reu.upper()}, brasileiro(a), portador(a) de CPF nº XXX.XXX.XXX-XX,
+pelos fatos e fundamentos jurídicos que passa a expor:
+
+I - DOS FATOS
+O autor expõe, em síntese, os fatos que motivam a presente demanda. 
+(Descreva aqui, se desejar, os fatos de forma resumida.)
+
+II - DO DIREITO
+O pedido fundamenta-se no Código Civil e no Código de Processo Civil, 
+especialmente nos arts. 186 e 927 do Código Civil, e art. 319 do CPC, 
+bem como na jurisprudência pátria aplicável à espécie.
+
+III - DOS PEDIDOS
+Diante do exposto, requer:
+{pedidos}
+
+Dá-se à causa o valor de R$ {valor_causa:,.2f}.
+
+Nestes termos,
+Pede deferimento.
+
+{comarca}, {data_hoje}.
+
+__________________________________________
+Advogado(a)
+OAB/XX 000000
+"""
+    return peticao
+
+
+# --- INTERFACE STREAMLIT ---
+st.set_page_config(page_title="Gerador de Petição", page_icon="⚖️")
+st.title("⚖️ Gerador Automático de Petição Inicial")
+st.write("Preencha as informações abaixo e gere automaticamente uma petição conforme o art. 319 do CPC.")
+
+# Formulário
+with st.form("form_peticao"):
+    nome_autor = st.text_input("Nome do Autor")
+    nome_reu = st.text_input("Nome do Réu")
+    tipo_acao = st.text_input("Tipo de Ação (ex: indenização por danos morais)")
+    comarca = st.text_input("Comarca (ex: Comarca de Belo Horizonte/MG)")
+    pedidos = st.text_area("Pedidos Principais", 
+                           "1. A citação do réu;\n2. A procedência da ação;\n3. A condenação em custas e honorários.")
+    valor_causa = st.number_input("Valor da causa (em R$)", min_value=0.0, step=100.0)
+    
+    gerar = st.form_submit_button("🧾 Gerar Petição")
+
+# Quando o botão for clicado
+if gerar:
+    if not nome_autor or not nome_reu or not tipo_acao or not comarca:
+        st.warning("⚠️ Preencha todos os campos obrigatórios.")
+    else:
+        peticao = gerar_peticao(nome_autor, nome_reu, tipo_acao, comarca, pedidos, valor_causa)
+        st.success("✅ Petição gerada com sucesso!")
+
+        st.download_button(
+            label="📥 Baixar Petição em TXT",
+            data=peticao,
+            file_name=f"peticao_{nome_autor.lower().replace(' ', '_')}.txt",
+            mime="text/plain"
+        )
+
+        st.divider()
+        st.subheader("📄 Prévia da Petição:")
+        st.text_area("Visualização", peticao, height=400)
