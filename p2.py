@@ -2,9 +2,9 @@ import streamlit as st
 import requests
 import pandas as pd
 
-st.set_page_config(page_title="Consulta de Deputados - Câmara", layout="wide")
+st.set_page_config(page_title="Consulta de Deputados Federais", layout="wide")
 
-st.title("Consulta de Deputados - Câmara dos Deputados")
+st.title("Consulta de Deputados Federais")
 
 nome_deputado = st.text_input("Digite o nome do deputado:")
 
