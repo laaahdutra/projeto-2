@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import plotly.express as px
 
 st.set_page_config(page_title="Despesas dos Senadores", layout="wide")
 st.title("📊 Despesas dos Senadores - Dados Abertos do Senado Federal")
@@ -20,10 +21,9 @@ if nome_senador:
         resposta.raise_for_status()
         dados = resposta.json()
 
-        # A API pode retornar uma lista ou um dicionário com 'data'
+        # Pode vir como {"data": [...]}
         senadores = dados.get("data", dados)
 
-        # Procurar o senador pelo nome (ignora maiúsculas/minúsculas)
         senador_encontrado = next(
             (s for s in senadores if nome_senador.lower() in s["name"].lower()), None
         )
@@ -45,19 +45,34 @@ if nome_senador:
                 if despesas:
                     df = pd.DataFrame(despesas)
 
-                    # Alguns registros podem não ter valor ou categoria
-                    df = df.dropna(subset=["category", "value"])
+                    # Mostrar as colunas para depuração
+                    st.write("🔍 Colunas retornadas pela API:", list(df.columns))
 
-                    if not df.empty:
-                        # Agrupar por categoria
-                        resumo = df.groupby("category", as_index=False)["value"].sum()
+                    # Normaliza nomes de colunas caso venham diferentes
+                    col_categoria = None
+                    col_valor = None
+
+                    for c in df.columns:
+                        if "category" in c.lower() or "expense_type" in c.lower():
+                            col_categoria = c
+                        if "value" in c.lower() or "amount" in c.lower():
+                            col_valor = c
+
+                    if col_categoria and col_valor:
+                        df = df.dropna(subset=[col_categoria, col_valor])
+
+                        resumo = (
+                            df.groupby(col_categoria, as_index=False)[col_valor]
+                            .sum()
+                            .sort_values(by=col_valor, ascending=False)
+                        )
 
                         fig = px.bar(
                             resumo,
-                            x="category",
-                            y="value",
+                            x=col_categoria,
+                            y=col_valor,
                             title=f"Despesas de {nome} por categoria",
-                            labels={"category": "Categoria", "value": "Valor (R$)"},
+                            labels={col_categoria: "Categoria", col_valor: "Valor (R$)"},
                             text_auto=".2s",
                         )
                         fig.update_layout(xaxis_tickangle=-45)
@@ -66,7 +81,10 @@ if nome_senador:
                         with st.expander("Ver dados completos"):
                             st.dataframe(df)
                     else:
-                        st.warning("Nenhuma despesa com valores válidos encontrada.")
+                        st.warning(
+                            "A API retornou dados, mas não há colunas de categoria/valor identificáveis."
+                        )
+                        st.dataframe(df)
                 else:
                     st.warning("Nenhuma despesa encontrada para esse senador.")
             except requests.RequestException as e:
