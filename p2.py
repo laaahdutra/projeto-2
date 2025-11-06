@@ -2,13 +2,10 @@ import streamlit as st
 import requests
 import pandas as pd
 
-# --- Configurações simples ---
 st.set_page_config(page_title="Consulta de Deputados - Câmara", layout="wide")
 
-# Título da aplicação
 st.title("Consulta de Deputados - Câmara dos Deputados")
 
-# Caixa de busca por nome
 nome_deputado = st.text_input("Digite o nome do deputado:")
 
 if nome_deputado:
@@ -34,14 +31,12 @@ if nome_deputado:
     else:
         st.warning("Nenhum deputado encontrado com esse nome.")
 
-# --- Parte 2: Consulta de despesas pelo ID ---
 st.markdown("---")
 st.subheader("Consultar despesas do deputado")
 id_deputado = st.text_input("Digite o ID do deputado para ver suas despesas:")
 
-# Só tenta buscar se o usuário informou algo
 if id_deputado:
-    # limpa espaços e verifica se é numérico (a API aceita ID numérico)
+    
     id_clean = id_deputado.strip()
     if not id_clean.isdigit():
         st.error("ID inválido: informe apenas números correspondentes ao ID do deputado.")
@@ -62,7 +57,7 @@ if id_deputado:
                     break
 
                 despesas.extend(dados_pagina)
-                # Previne loop infinito se a API não tiver total de páginas claro:
+                
                 pagina += 1
 
             if despesas:
@@ -70,9 +65,8 @@ if id_deputado:
 
                 df = pd.DataFrame(despesas)
 
-                # Se "valorDocumento" vier com formatos variados, tenta normalizar:
                 if "valorDocumento" in df.columns:
-                    # remove pontos de milhar e substitui vírgula por ponto (caso venha assim)
+                   
                     df["valorDocumento"] = (
                         df["valorDocumento"]
                         .astype(str)
@@ -81,10 +75,9 @@ if id_deputado:
                     )
                     df["valorDocumento"] = pd.to_numeric(df["valorDocumento"], errors="coerce").fillna(0)
                 else:
-                    # cria coluna vazia caso não exista
+                    
                     df["valorDocumento"] = 0
 
-                # Colunas desejadas para exibir
                 colunas_desejadas = ["ano", "mes", "tipoDespesa", "valorDocumento", "fornecedor", "descricao"]
                 colunas_existentes = [col for col in colunas_desejadas if col in df.columns]
 
@@ -93,11 +86,10 @@ if id_deputado:
                 else:
                     st.warning("Não há colunas esperadas disponíveis para exibição.")
 
-                # --- Gráficos ---
-                st.markdown("### 📊 Gráfico de Despesas")
+                st.markdown("📊 Gráfico de Despesas")
 
                 if not df.empty:
-                    # Gráfico de barras por tipo de despesa
+                   
                     if "tipoDespesa" in df.columns:
                         grafico_tipo = df.groupby("tipoDespesa")["valorDocumento"].sum().sort_values(ascending=False)
                         if not grafico_tipo.empty:
@@ -107,7 +99,7 @@ if id_deputado:
                     else:
                         st.info("Coluna 'tipoDespesa' não disponível para gerar gráfico.")
 
-                    # Gráfico de linha por mês (ordenado)
+                   
                     if "mes" in df.columns and "ano" in df.columns:
                         # cria período para ordenar (ano-mês)
                         df["periodo"] = df["ano"].astype(str) + "-" + df["mes"].astype(str).str.zfill(2)
