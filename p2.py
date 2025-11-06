@@ -1,100 +1,132 @@
 import streamlit as st
 import requests
 import pandas as pd
-import plotly.express as px
 
-st.set_page_config(page_title="Despesas dos Senadores", layout="wide")
-st.title("📊 Despesas dos Senadores - Dados Abertos do Senado Federal")
+# --- Configurações simples ---
+st.set_page_config(page_title="Consulta de Deputados - Câmara", layout="wide")
 
-st.markdown("""
-Digite o nome de um senador para visualizar o total de despesas por categoria, 
-utilizando dados da [API pública da Codante](https://apis.codante.io/senator-expenses).
-""")
+# Título da aplicação
+st.title("Consulta de Deputados - Câmara dos Deputados")
 
-# Entrada do nome do senador
-nome_senador = st.text_input("Digite o nome do senador:")
+# Caixa de busca por nome
+nome_deputado = st.text_input("Digite o nome do deputado:")
 
-if nome_senador:
-    url_senadores = "https://apis.codante.io/senator-expenses/senators"
+if nome_deputado:
+    url = f"https://dadosabertos.camara.leg.br/api/v2/deputados"
+    params = {"nome": nome_deputado, "itens": 100}  # buscar até 100 resultados de uma vez
     try:
-        resposta = requests.get(url_senadores)
-        resposta.raise_for_status()
-        dados = resposta.json()
-
-        # Pode vir como {"data": [...]}
-        senadores = dados.get("data", dados)
-
-        senador_encontrado = next(
-            (s for s in senadores if nome_senador.lower() in s["name"].lower()), None
-        )
-
-        if senador_encontrado:
-            senador_id = senador_encontrado["id"]
-            nome = senador_encontrado["name"]
-            st.success(f"Senador encontrado: **{nome}**")
-
-            url_despesas = f"https://apis.codante.io/senator-expenses/expenses?senatorId={senador_id}"
-
-            try:
-                resp_despesas = requests.get(url_despesas)
-                resp_despesas.raise_for_status()
-                dados_despesas = resp_despesas.json()
-
-                despesas = dados_despesas.get("data", dados_despesas)
-
-                if despesas:
-                    df = pd.DataFrame(despesas)
-
-                    # Mostrar as colunas para depuração
-                    st.write("🔍 Colunas retornadas pela API:", list(df.columns))
-
-                    # Normaliza nomes de colunas caso venham diferentes
-                    col_categoria = None
-                    col_valor = None
-
-                    for c in df.columns:
-                        if "category" in c.lower() or "expense_type" in c.lower():
-                            col_categoria = c
-                        if "value" in c.lower() or "amount" in c.lower():
-                            col_valor = c
-
-                    if col_categoria and col_valor:
-                        df = df.dropna(subset=[col_categoria, col_valor])
-
-                        resumo = (
-                            df.groupby(col_categoria, as_index=False)[col_valor]
-                            .sum()
-                            .sort_values(by=col_valor, ascending=False)
-                        )
-
-                        fig = px.bar(
-                            resumo,
-                            x=col_categoria,
-                            y=col_valor,
-                            title=f"Despesas de {nome} por categoria",
-                            labels={col_categoria: "Categoria", col_valor: "Valor (R$)"},
-                            text_auto=".2s",
-                        )
-                        fig.update_layout(xaxis_tickangle=-45)
-                        st.plotly_chart(fig, use_container_width=True)
-
-                        with st.expander("Ver dados completos"):
-                            st.dataframe(df)
-                    else:
-                        st.warning(
-                            "A API retornou dados, mas não há colunas de categoria/valor identificáveis."
-                        )
-                        st.dataframe(df)
-                else:
-                    st.warning("Nenhuma despesa encontrada para esse senador.")
-            except requests.RequestException as e:
-                st.error(f"Erro ao buscar despesas: {e}")
-
-        else:
-            st.warning("Senador não encontrado. Verifique se o nome está correto.")
-
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
     except requests.RequestException as e:
-        st.error(f"Erro ao conectar à API de senadores: {e}")
+        st.error(f"Erro ao consultar a API de deputados: {e}")
+        st.stop()
 
-else:
-    st.info("Digite o nome de um senador para iniciar a busca.")
+    deputados = data.get("dados", [])
+    if deputados:
+        st.success(f"{len(deputados)} deputado(s) encontrado(s):")
+        for deputado in deputados:
+            st.subheader(deputado.get("nome"))
+            st.write(f"*ID:* {deputado.get('id')}")
+            st.write(f"*Sigla Partido:* {deputado.get('siglaPartido')}")
+            st.write(f"*UF:* {deputado.get('siglaUf')}")
+            st.write(f"*URL Perfil:* [Link]({deputado.get('uri')})")
+    else:
+        st.warning("Nenhum deputado encontrado com esse nome.")
+
+# --- Parte 2: Consulta de despesas pelo ID ---
+st.markdown("---")
+st.subheader("Consultar despesas do deputado")
+id_deputado = st.text_input("Digite o ID do deputado para ver suas despesas:")
+
+# Só tenta buscar se o usuário informou algo
+if id_deputado:
+    # limpa espaços e verifica se é numérico (a API aceita ID numérico)
+    id_clean = id_deputado.strip()
+    if not id_clean.isdigit():
+        st.error("ID inválido: informe apenas números correspondentes ao ID do deputado.")
+    else:
+        base_url = f"https://dadosabertos.camara.leg.br/api/v2/deputados/{id_clean}/despesas"
+        despesas = []
+        pagina = 1
+
+        try:
+            while True:
+                params = {"pagina": pagina, "itens": 100}  # 100 por página (máximo)
+                resp = requests.get(base_url, params=params, timeout=15)
+                resp.raise_for_status()
+                despesas_data = resp.json()
+
+                dados_pagina = despesas_data.get("dados", [])
+                if not dados_pagina:
+                    break
+
+                despesas.extend(dados_pagina)
+                # Previne loop infinito se a API não tiver total de páginas claro:
+                pagina += 1
+
+            if despesas:
+                st.success(f"{len(despesas)} despesa(s) encontrada(s) para o deputado {id_clean}.")
+
+                df = pd.DataFrame(despesas)
+
+                # Se "valorDocumento" vier com formatos variados, tenta normalizar:
+                if "valorDocumento" in df.columns:
+                    # remove pontos de milhar e substitui vírgula por ponto (caso venha assim)
+                    df["valorDocumento"] = (
+                        df["valorDocumento"]
+                        .astype(str)
+                        .str.replace(".", "", regex=False)
+                        .str.replace(",", ".", regex=False)
+                    )
+                    df["valorDocumento"] = pd.to_numeric(df["valorDocumento"], errors="coerce").fillna(0)
+                else:
+                    # cria coluna vazia caso não exista
+                    df["valorDocumento"] = 0
+
+                # Colunas desejadas para exibir
+                colunas_desejadas = ["ano", "mes", "tipoDespesa", "valorDocumento", "fornecedor", "descricao"]
+                colunas_existentes = [col for col in colunas_desejadas if col in df.columns]
+
+                if colunas_existentes:
+                    st.dataframe(df[colunas_existentes].sort_values(by=["ano", "mes"], ascending=[False, False]))
+                else:
+                    st.warning("Não há colunas esperadas disponíveis para exibição.")
+
+                # --- Gráficos ---
+                st.markdown("### 📊 Gráfico de Despesas")
+
+                if not df.empty:
+                    # Gráfico de barras por tipo de despesa
+                    if "tipoDespesa" in df.columns:
+                        grafico_tipo = df.groupby("tipoDespesa")["valorDocumento"].sum().sort_values(ascending=False)
+                        if not grafico_tipo.empty:
+                            st.bar_chart(grafico_tipo)
+                        else:
+                            st.info("Sem dados para gerar o gráfico por tipo de despesa.")
+                    else:
+                        st.info("Coluna 'tipoDespesa' não disponível para gerar gráfico.")
+
+                    # Gráfico de linha por mês (ordenado)
+                    if "mes" in df.columns and "ano" in df.columns:
+                        # cria período para ordenar (ano-mês)
+                        df["periodo"] = df["ano"].astype(str) + "-" + df["mes"].astype(str).str.zfill(2)
+                        grafico_mes = df.groupby("periodo")["valorDocumento"].sum().sort_index()
+                        if not grafico_mes.empty:
+                            st.line_chart(grafico_mes)
+                        else:
+                            st.info("Sem dados para gerar o gráfico mensal.")
+                    elif "mes" in df.columns:
+                        grafico_mes = df.groupby("mes")["valorDocumento"].sum().sort_index()
+                        if not grafico_mes.empty:
+                            st.line_chart(grafico_mes)
+                        else:
+                            st.info("Sem dados para gerar o gráfico mensal.")
+                    else:
+                        st.info("Coluna 'mes' não disponível para gerar gráfico.")
+                else:
+                    st.warning("Não foi possível gerar gráficos — dados vazios.")
+            else:
+                st.warning("Nenhuma despesa encontrada para este deputado.")
+        except requests.RequestException as e:
+            st.error(f"Erro ao consultar as despesas: {e}"
