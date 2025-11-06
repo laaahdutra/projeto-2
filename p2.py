@@ -129,4 +129,4 @@ if id_deputado:
             else:
                 st.warning("Nenhuma despesa encontrada para este deputado.")
         except requests.RequestException as e:
-            st.error(f"Erro ao consultar as despesas: {e}"
+            st.error(f"Erro ao consultar as despesas: {e}") 
