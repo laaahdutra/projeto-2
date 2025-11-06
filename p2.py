@@ -1,48 +1,73 @@
-# app.py
 import streamlit as st
 import requests
+import pandas as pd
+import plotly.express as px
 
-st.title("Consulta de Deputados - Câmara dos Deputados")
+# Título da aplicação
+st.title("📊 Despesas dos Senadores - Dados Abertos do Senado Federal")
 
-nome_deputado = st.text_input("Digite o nome do deputado:")
+st.markdown("""
+Digite o nome de um senador para visualizar o total de despesas por categoria, 
+utilizando dados da [API pública da Codante](https://apis.codante.io/senator-expenses).
+""")
 
-if nome_deputado:
-    # Busca informações do deputado
-    url_deputado = f"https://dadosabertos.camara.leg.br/api/v2/deputados?nome={nome_deputado}"
-    try:
-        response = requests.get(url_deputado, timeout=10)
-        data = response.json()
-        deputados = data.get("dados", [])
-        
-        if deputados:
-            st.subheader("Resultados da busca:")
-            for deputado in deputados:
-                st.write(f"**Nome:** {deputado.get('nome')}")
-                st.write(f"**ID:** {deputado.get('id')}")
-                st.write(f"**Sigla do Partido:** {deputado.get('siglaPartido')}")
-                st.write(f"**UF:** {deputado.get('siglaUf')}")
-                
-                # Busca despesas do deputado
-                url_despesas = f"https://dadosabertos.camara.leg.br/api/v2/deputados/{deputado.get('id')}/despesas"
-                try:
-                    desp_response = requests.get(url_despesas, timeout=10)
-                    despesas_data = desp_response.json()
-                    despesas = despesas_data.get("dados", [])
-                    
-                    if despesas:
-                        st.write("**Despesas recentes:**")
-                        for desp in despesas[:5]:  # mostra apenas as 5 primeiras
-                            st.write(f"- {desp.get('tipoDespesa')}: R$ {desp.get('valorDocumento')}")
-                    else:
-                        st.write("Nenhuma despesa encontrada.")
-                        
-                except requests.RequestException as e:
-                    st.error(f"Erro ao buscar despesas: {e}")
-                
-                st.markdown("---")
+# Entrada do nome do senador
+nome_senador = st.text_input("Digite o nome do senador:")
+
+if nome_senador:
+    # Buscar todos os senadores
+    url_senadores = "https://apis.codante.io/senator-expenses/senators"
+    resposta = requests.get(url_senadores)
+
+    if resposta.status_code == 200:
+        senadores = resposta.json()
+
+        # Procurar o senador pelo nome (case-insensitive)
+        senador_encontrado = next(
+            (s for s in senadores if nome_senador.lower() in s["name"].lower()), None
+        )
+
+        if senador_encontrado:
+            senador_id = senador_encontrado["id"]
+            st.success(f"Senador encontrado: **{senador_encontrado['name']}**")
+
+            # Buscar despesas do senador
+            url_despesas = f"https://apis.codante.io/senator-expenses/expenses?senatorId={senador_id}"
+            resposta_despesas = requests.get(url_despesas)
+
+            if resposta_despesas.status_code == 200:
+                despesas = resposta_despesas.json()
+
+                if despesas:
+                    # Criar DataFrame
+                    df = pd.DataFrame(despesas)
+
+                    # Agrupar por categoria
+                    despesas_categoria = df.groupby("category")["value"].sum().reset_index()
+
+                    # Gráfico de barras
+                    fig = px.bar(
+                        despesas_categoria,
+                        x="category",
+                        y="value",
+                        title=f"Despesas de {senador_encontrado['name']} por categoria",
+                        labels={"category": "Categoria", "value": "Valor (R$)"},
+                        text_auto=True,
+                    )
+
+                    fig.update_layout(xaxis_tickangle=-45)
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    # Mostrar tabela
+                    with st.expander("Ver dados brutos"):
+                        st.dataframe(df)
+                else:
+                    st.warning("Nenhuma despesa encontrada para esse senador.")
+            else:
+                st.error("Erro ao buscar as despesas do senador.")
         else:
-            st.warning("Nenhum deputado encontrado com esse nome.")
-            
-    except requests.RequestException as e:
-        st.error(f"Erro ao consultar a API: {e}")
-
+            st.warning("Senador não encontrado. Verifique o nome e tente novamente.")
+    else:
+        st.error("Erro ao acessar a API dos senadores.")
+else:
+    st.info("Digite o nome de um senador para iniciar a busca.")
