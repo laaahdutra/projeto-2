@@ -10,7 +10,7 @@ nome_deputado = st.text_input("Digite o nome do deputado:")
 
 if nome_deputado:
     url = f"https://dadosabertos.camara.leg.br/api/v2/deputados"
-    params = {"nome": nome_deputado, "itens": 100}  # buscar até 100 resultados de uma vez
+    params = {"nome": nome_deputado, "itens": 100}
     try:
         response = requests.get(url, params=params, timeout=10)
         response.raise_for_status()
@@ -24,10 +24,10 @@ if nome_deputado:
         st.success(f"{len(deputados)} deputado(s) encontrado(s):")
         for deputado in deputados:
             st.subheader(deputado.get("nome"))
-            st.write(f"*ID:* {deputado.get('id')}")
-            st.write(f"*Sigla Partido:* {deputado.get('siglaPartido')}")
-            st.write(f"*UF:* {deputado.get('siglaUf')}")
-            st.write(f"*URL Perfil:* [Link]({deputado.get('uri')})")
+            st.write(f"**ID:** {deputado.get('id')}")
+            st.write(f"**Sigla Partido:** {deputado.get('siglaPartido')}")
+            st.write(f"**UF:** {deputado.get('siglaUf')}")
+            st.write(f"**URL Perfil:** [Link]({deputado.get('uri')})")
     else:
         st.warning("Nenhum deputado encontrado com esse nome.")
 
@@ -36,7 +36,6 @@ st.subheader("Consultar despesas do deputado")
 id_deputado = st.text_input("Digite o ID do deputado para ver suas despesas:")
 
 if id_deputado:
-    
     id_clean = id_deputado.strip()
     if not id_clean.isdigit():
         st.error("ID inválido: informe apenas números correspondentes ao ID do deputado.")
@@ -47,7 +46,7 @@ if id_deputado:
 
         try:
             while True:
-                params = {"pagina": pagina, "itens": 100}  # 100 por página (máximo)
+                params = {"pagina": pagina, "itens": 100}
                 resp = requests.get(base_url, params=params, timeout=15)
                 resp.raise_for_status()
                 despesas_data = resp.json()
@@ -57,7 +56,6 @@ if id_deputado:
                     break
 
                 despesas.extend(dados_pagina)
-                
                 pagina += 1
 
             if despesas:
@@ -66,7 +64,6 @@ if id_deputado:
                 df = pd.DataFrame(despesas)
 
                 if "valorDocumento" in df.columns:
-                   
                     df["valorDocumento"] = (
                         df["valorDocumento"]
                         .astype(str)
@@ -75,7 +72,6 @@ if id_deputado:
                     )
                     df["valorDocumento"] = pd.to_numeric(df["valorDocumento"], errors="coerce").fillna(0)
                 else:
-                    
                     df["valorDocumento"] = 0
 
                 colunas_desejadas = ["ano", "mes", "tipoDespesa", "valorDocumento", "fornecedor", "descricao"]
@@ -86,10 +82,9 @@ if id_deputado:
                 else:
                     st.warning("Não há colunas esperadas disponíveis para exibição.")
 
-                st.markdown("📊 Gráfico de Despesas")
+                st.markdown("### 📊 Gráfico de Despesas")
 
                 if not df.empty:
-                   
                     if "tipoDespesa" in df.columns:
                         grafico_tipo = df.groupby("tipoDespesa")["valorDocumento"].sum().sort_values(ascending=False)
                         if not grafico_tipo.empty:
@@ -99,9 +94,7 @@ if id_deputado:
                     else:
                         st.info("Coluna 'tipoDespesa' não disponível para gerar gráfico.")
 
-                   
                     if "mes" in df.columns and "ano" in df.columns:
-                        # cria período para ordenar (ano-mês)
                         df["periodo"] = df["ano"].astype(str) + "-" + df["mes"].astype(str).str.zfill(2)
                         grafico_mes = df.groupby("periodo")["valorDocumento"].sum().sort_index()
                         if not grafico_mes.empty:
@@ -121,4 +114,4 @@ if id_deputado:
             else:
                 st.warning("Nenhuma despesa encontrada para este deputado.")
         except requests.RequestException as e:
-            st.error(f"Erro ao consultar as despesas: {e}") 
+            st.error(f"Erro ao consultar as despesas: {e}")
