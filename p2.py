@@ -1,9 +1,8 @@
 import streamlit as st
 import requests
 import pandas as pd
-import plotly.express as px
 
-# Título da aplicação
+st.set_page_config(page_title="Despesas dos Senadores", layout="wide")
 st.title("📊 Despesas dos Senadores - Dados Abertos do Senado Federal")
 
 st.markdown("""
@@ -15,59 +14,69 @@ utilizando dados da [API pública da Codante](https://apis.codante.io/senator-ex
 nome_senador = st.text_input("Digite o nome do senador:")
 
 if nome_senador:
-    # Buscar todos os senadores
     url_senadores = "https://apis.codante.io/senator-expenses/senators"
-    resposta = requests.get(url_senadores)
+    try:
+        resposta = requests.get(url_senadores)
+        resposta.raise_for_status()
+        dados = resposta.json()
 
-    if resposta.status_code == 200:
-        senadores = resposta.json()
+        # A API pode retornar uma lista ou um dicionário com 'data'
+        senadores = dados.get("data", dados)
 
-        # Procurar o senador pelo nome (case-insensitive)
+        # Procurar o senador pelo nome (ignora maiúsculas/minúsculas)
         senador_encontrado = next(
             (s for s in senadores if nome_senador.lower() in s["name"].lower()), None
         )
 
         if senador_encontrado:
             senador_id = senador_encontrado["id"]
-            st.success(f"Senador encontrado: **{senador_encontrado['name']}**")
+            nome = senador_encontrado["name"]
+            st.success(f"Senador encontrado: **{nome}**")
 
-            # Buscar despesas do senador
             url_despesas = f"https://apis.codante.io/senator-expenses/expenses?senatorId={senador_id}"
-            resposta_despesas = requests.get(url_despesas)
 
-            if resposta_despesas.status_code == 200:
-                despesas = resposta_despesas.json()
+            try:
+                resp_despesas = requests.get(url_despesas)
+                resp_despesas.raise_for_status()
+                dados_despesas = resp_despesas.json()
+
+                despesas = dados_despesas.get("data", dados_despesas)
 
                 if despesas:
-                    # Criar DataFrame
                     df = pd.DataFrame(despesas)
 
-                    # Agrupar por categoria
-                    despesas_categoria = df.groupby("category")["value"].sum().reset_index()
+                    # Alguns registros podem não ter valor ou categoria
+                    df = df.dropna(subset=["category", "value"])
 
-                    # Gráfico de barras
-                    fig = px.bar(
-                        despesas_categoria,
-                        x="category",
-                        y="value",
-                        title=f"Despesas de {senador_encontrado['name']} por categoria",
-                        labels={"category": "Categoria", "value": "Valor (R$)"},
-                        text_auto=True,
-                    )
+                    if not df.empty:
+                        # Agrupar por categoria
+                        resumo = df.groupby("category", as_index=False)["value"].sum()
 
-                    fig.update_layout(xaxis_tickangle=-45)
-                    st.plotly_chart(fig, use_container_width=True)
+                        fig = px.bar(
+                            resumo,
+                            x="category",
+                            y="value",
+                            title=f"Despesas de {nome} por categoria",
+                            labels={"category": "Categoria", "value": "Valor (R$)"},
+                            text_auto=".2s",
+                        )
+                        fig.update_layout(xaxis_tickangle=-45)
+                        st.plotly_chart(fig, use_container_width=True)
 
-                    # Mostrar tabela
-                    with st.expander("Ver dados brutos"):
-                        st.dataframe(df)
+                        with st.expander("Ver dados completos"):
+                            st.dataframe(df)
+                    else:
+                        st.warning("Nenhuma despesa com valores válidos encontrada.")
                 else:
                     st.warning("Nenhuma despesa encontrada para esse senador.")
-            else:
-                st.error("Erro ao buscar as despesas do senador.")
+            except requests.RequestException as e:
+                st.error(f"Erro ao buscar despesas: {e}")
+
         else:
-            st.warning("Senador não encontrado. Verifique o nome e tente novamente.")
-    else:
-        st.error("Erro ao acessar a API dos senadores.")
+            st.warning("Senador não encontrado. Verifique se o nome está correto.")
+
+    except requests.RequestException as e:
+        st.error(f"Erro ao conectar à API de senadores: {e}")
+
 else:
     st.info("Digite o nome de um senador para iniciar a busca.")
